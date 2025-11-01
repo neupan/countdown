@@ -151,7 +151,7 @@ fun MemorialDayCard(
             
             // 倒数天数
             Text(
-                text = "距离今年的这个纪念日还剩 $daysRemaining 天",
+                text = "距离下次${memorialDay.name}还剩 $daysRemaining 天",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary
             )

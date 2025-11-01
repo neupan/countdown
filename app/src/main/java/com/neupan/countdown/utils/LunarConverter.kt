@@ -1,19 +1,14 @@
 package com.neupan.countdown.utils
 
+import com.nlf.calendar.Lunar
+import com.nlf.calendar.Solar
 import java.util.Calendar
 
 /**
  * 农历转换工具类
- * 实现了基本的农历转公历和公历转农历功能
+ * 使用 lunar-java 库实现精确的农历转公历转换
  */
 object LunarConverter {
-    
-    // 农历数据表：1900-2100年的农历信息
-    // 每个数据用4个十六进制数表示，从低位到高位分别表示：
-    // 1. 该年闰月月份（0表示无闰月）
-    // 2. 该年闰月天数（29或30）
-    // 3. 该年12个月的大小月情况（大月30天，小月29天），从1月到12月
-    // 这是简化版本，实际需要完整的农历数据表
     
     /**
      * 将农历日期转换为公历日期
@@ -23,53 +18,75 @@ object LunarConverter {
      * @return 公历Calendar对象
      */
     fun lunarToSolar(lunarYear: Int, lunarMonth: Int, lunarDay: Int): Calendar {
-        // 简化实现：使用近似计算
-        // 实际应用中需要完整的农历数据表进行精确转换
-        // 这里使用一个近似的算法
+        // 使用 lunar-java 库进行精确转换
+        val lunar = Lunar.fromYmd(lunarYear, lunarMonth, lunarDay)
+        val solar = lunar.solar
+        
         val calendar = Calendar.getInstance()
-        
-        // 农历年份对应的大致公历年份（农历和公历年份基本相同，但可能有偏移）
-        // 农历新年通常在公历1月下旬到2月中旬
-        val solarYear = lunarYear
-        
-        // 农历月份大致对应公历月份（需要根据农历新年位置调整）
-        // 农历1月大约在公历1月下旬到2月中旬
-        val solarMonth = (lunarMonth - 1 + 1) % 12 // 简化处理
-        val solarDay = lunarDay
-        
-        calendar.set(solarYear, solarMonth, solarDay)
-        
-        // 注意：这是一个简化实现，实际应用中需要使用完整的农历数据表
-        // 或者使用第三方库如 com.github.niefy:lunar-java
+        calendar.set(solar.year, solar.month - 1, solar.day, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         
         return calendar
     }
     
     /**
-     * 获取某年农历某月某日的公历日期（今年的）
-     * @param lunarMonth 农历月份
+     * 获取某年农历某月某日的公历日期
+     * @param lunarMonth 农历月份（1-12）
      * @param lunarDay 农历日期
-     * @param currentYear 当前公历年份
-     * @return 公历Calendar对象（今年的日期）
+     * @param solarYear 公历年份
+     * @return 公历Calendar对象
      */
-    fun getSolarDateForThisYear(lunarMonth: Int, lunarDay: Int, currentYear: Int): Calendar {
-        // 简化实现：假设农历月日和公历月日有简单的对应关系
-        // 在实际应用中，需要查询农历数据表来确定准确的对应关系
-        
-        // 农历1月1日大约在公历1月下旬到2月中旬之间
-        // 这里使用一个近似的转换
-        val calendar = Calendar.getInstance()
-        
-        // 将农历月份转换为大致对应的公历月份
-        // 农历1月 ≈ 公历1月或2月，农历12月 ≈ 公历12月或1月
-        var solarMonth = lunarMonth + 1 // 大致对应
-        if (solarMonth > 12) {
-            solarMonth -= 12
+    fun getSolarDateForThisYear(lunarMonth: Int, lunarDay: Int, solarYear: Int): Calendar {
+        // 尝试当前公历年对应的农历年
+        try {
+            val lunar = Lunar.fromYmd(solarYear, lunarMonth, lunarDay)
+            val solar = lunar.solar
+            
+            // 检查转换后的公历年份
+            if (solar.year == solarYear) {
+                val calendar = Calendar.getInstance()
+                calendar.set(solar.year, solar.month - 1, solar.day, 0, 0, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                return calendar
+            }
+        } catch (e: Exception) {
+            // 如果转换失败，可能是因为农历年份不对
         }
         
-        calendar.set(currentYear, solarMonth - 1, lunarDay)
+        // 尝试下一个农历年
+        try {
+            val lunar = Lunar.fromYmd(solarYear + 1, lunarMonth, lunarDay)
+            val solar = lunar.solar
+            
+            if (solar.year == solarYear) {
+                val calendar = Calendar.getInstance()
+                calendar.set(solar.year, solar.month - 1, solar.day, 0, 0, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                return calendar
+            }
+        } catch (e: Exception) {
+            // 忽略
+        }
         
-        // 注意：这是简化实现，实际需要完整的农历转换算法
+        // 尝试上一个农历年
+        try {
+            val lunar = Lunar.fromYmd(solarYear - 1, lunarMonth, lunarDay)
+            val solar = lunar.solar
+            
+            if (solar.year == solarYear) {
+                val calendar = Calendar.getInstance()
+                calendar.set(solar.year, solar.month - 1, solar.day, 0, 0, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                return calendar
+            }
+        } catch (e: Exception) {
+            // 忽略
+        }
+        
+        // 如果都失败，返回一个默认值（农历日期对应到公历大致位置）
+        val calendar = Calendar.getInstance()
+        calendar.set(solarYear, lunarMonth, lunarDay, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
         return calendar
     }
     
@@ -83,6 +100,22 @@ object LunarConverter {
     fun isLunarDatePassed(lunarMonth: Int, lunarDay: Int, currentDate: Calendar): Boolean {
         val thisYearDate = getSolarDateForThisYear(lunarMonth, lunarDay, currentDate.get(Calendar.YEAR))
         return currentDate.after(thisYearDate)
+    }
+    
+    /**
+     * 将公历日期转换为农历日期
+     * @param solarCalendar 公历Calendar对象
+     * @return Triple(年, 月, 日)
+     */
+    fun solarToLunar(solarCalendar: Calendar): Triple<Int, Int, Int> {
+        val solar = Solar.fromYmd(
+            solarCalendar.get(Calendar.YEAR),
+            solarCalendar.get(Calendar.MONTH) + 1,
+            solarCalendar.get(Calendar.DAY_OF_MONTH)
+        )
+        val lunar = solar.lunar
+        
+        return Triple(lunar.year, lunar.month, lunar.day)
     }
 }
 

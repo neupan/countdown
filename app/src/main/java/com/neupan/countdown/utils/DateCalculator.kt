@@ -2,20 +2,24 @@ package com.neupan.countdown.utils
 
 import com.neupan.countdown.data.MemorialDay
 import java.util.Calendar
+import android.util.Log
 
 /**
  * 日期计算工具类
  */
 object DateCalculator {
-    
+
+    val TAG = "DateCalculator"
     /**
-     * 计算纪念日的正数天数（已经过去的天数）
+     * 计算距离上一个纪念日已经过去的天数
      * @param memorialDay 纪念日
-     * @return 已经过去的天数，如果纪念日还没到今年，返回null
+     * @return 已经过去的天数，如果纪念日还没到，返回null
      */
     fun getDaysPassed(memorialDay: MemorialDay): Int? {
         val today = Calendar.getInstance()
         val thisYearDate = getThisYearDate(memorialDay, today.get(Calendar.YEAR))
+        Log.d(TAG, "today: $today")
+        Log.d(TAG, "thisYearDate: $thisYearDate")
         
         if (today.before(thisYearDate)) {
             // 今年的纪念日还没到，返回null
@@ -27,7 +31,7 @@ object DateCalculator {
     }
     
     /**
-     * 计算距离今年纪念日还剩的天数
+     * 计算距离下一个纪念日还剩的天数
      * @param memorialDay 纪念日
      * @return 还剩的天数，如果今年的纪念日已过，返回明年纪念日还剩的天数
      */
@@ -50,7 +54,7 @@ object DateCalculator {
     }
     
     /**
-     * 获取今年的纪念日日期
+     * 获取下一个纪念日的日期
      * @param memorialDay 纪念日
      * @param year 年份
      * @return Calendar对象
