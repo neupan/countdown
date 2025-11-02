@@ -132,11 +132,19 @@ fun MemorialDayCard(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            Text(
-                text = "${memorialDay.year}年${memorialDay.month}月${memorialDay.day}日",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            // 显示原始日期（公历）和对应的农历日期
+            Column {
+                Text(
+                    text = "${memorialDay.solarYear}年${memorialDay.solarMonth}月${memorialDay.solarDay}日 (公历)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "农历${memorialDay.lunarYear}年${memorialDay.lunarMonth}月${memorialDay.lunarDay}日",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             
             Spacer(modifier = Modifier.height(12.dp))
             
@@ -151,7 +159,11 @@ fun MemorialDayCard(
             
             // 倒数天数
             Text(
-                text = "距离下次${memorialDay.name}还剩 $daysRemaining 天",
+                text = if (memorialDay.isLunar) {
+                    "距离下次农历「${memorialDay.name}」还剩 $daysRemaining 天"
+                } else {
+                    "距离下次「${memorialDay.name}」还剩 $daysRemaining 天"
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.secondary
             )

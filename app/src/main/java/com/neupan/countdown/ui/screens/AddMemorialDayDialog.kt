@@ -1,12 +1,16 @@
 package com.neupan.countdown.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.neupan.countdown.data.MemorialDay
+import com.neupan.countdown.utils.LunarConverter
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -20,19 +24,21 @@ fun AddMemorialDayDialog(
     
     var name by remember { mutableStateOf(memorialDay?.name ?: "") }
     var isLunar by remember { mutableStateOf(memorialDay?.isLunar ?: false) }
-    var year by remember { 
+    
+    // 用户选择的总是公历日期（从 DatePicker 选择）
+    var solarYear by remember { 
         mutableStateOf(
-            memorialDay?.year ?: calendar.get(Calendar.YEAR)
+            memorialDay?.solarYear ?: calendar.get(Calendar.YEAR)
         ) 
     }
-    var month by remember { 
+    var solarMonth by remember { 
         mutableStateOf(
-            memorialDay?.month ?: calendar.get(Calendar.MONTH) + 1
+            memorialDay?.solarMonth ?: calendar.get(Calendar.MONTH) + 1
         ) 
     }
-    var day by remember { 
+    var solarDay by remember { 
         mutableStateOf(
-            memorialDay?.day ?: calendar.get(Calendar.DAY_OF_MONTH)
+            memorialDay?.solarDay ?: calendar.get(Calendar.DAY_OF_MONTH)
         ) 
     }
     var reminderDaysText by remember { 
@@ -40,6 +46,8 @@ fun AddMemorialDayDialog(
             memorialDay?.reminderDays ?: "3,1"
         ) 
     }
+    
+    var showDatePicker by remember { mutableStateOf(false) }
     
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -57,42 +65,37 @@ fun AddMemorialDayDialog(
                     singleLine = true
                 )
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                // 日期选择按钮
+                OutlinedCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true }
                 ) {
-                    OutlinedTextField(
-                        value = year.toString(),
-                        onValueChange = { 
-                            it.toIntOrNull()?.let { y -> 
-                                if (y > 1900 && y < 2100) year = y
-                            } 
-                        },
-                        label = { Text("年") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    OutlinedTextField(
-                        value = month.toString(),
-                        onValueChange = { 
-                            it.toIntOrNull()?.let { m -> 
-                                if (m >= 1 && m <= 12) month = m
-                            } 
-                        },
-                        label = { Text("月") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    OutlinedTextField(
-                        value = day.toString(),
-                        onValueChange = { 
-                            it.toIntOrNull()?.let { d -> 
-                                if (d >= 1 && d <= 31) day = d
-                            } 
-                        },
-                        label = { Text("日") },
-                        modifier = Modifier.weight(1f)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "选择日期",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${solarYear}年${solarMonth}月${solarDay}日 (公历)",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "选择日期",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 
                 Row(
@@ -130,19 +133,31 @@ fun AddMemorialDayDialog(
             TextButton(
                 onClick = {
                     if (name.isNotBlank()) {
+                        // 根据用户选择的公历日期，计算对应的农历日期
+                        val solarCalendar = Calendar.getInstance().apply {
+                            set(solarYear, solarMonth - 1, solarDay)
+                        }
+                        val (lunarYear, lunarMonth, lunarDay) = LunarConverter.solarToLunar(solarCalendar)
+                        
                         onSave(
                             memorialDay?.copy(
                                 name = name,
-                                year = year,
-                                month = month,
-                                day = day,
+                                solarYear = solarYear,
+                                solarMonth = solarMonth,
+                                solarDay = solarDay,
+                                lunarYear = lunarYear,
+                                lunarMonth = lunarMonth,
+                                lunarDay = lunarDay,
                                 isLunar = isLunar,
                                 reminderDays = reminderDaysText
                             ) ?: MemorialDay(
                                 name = name,
-                                year = year,
-                                month = month,
-                                day = day,
+                                solarYear = solarYear,
+                                solarMonth = solarMonth,
+                                solarDay = solarDay,
+                                lunarYear = lunarYear,
+                                lunarMonth = lunarMonth,
+                                lunarDay = lunarDay,
                                 isLunar = isLunar,
                                 reminderDays = reminderDaysText
                             )
@@ -161,5 +176,42 @@ fun AddMemorialDayDialog(
             }
         }
     )
+    
+    // 日期选择器对话框
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = Calendar.getInstance().apply {
+                set(solarYear, solarMonth - 1, solarDay)
+            }.timeInMillis
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedCalendar = Calendar.getInstance().apply {
+                                timeInMillis = millis
+                            }
+                            solarYear = selectedCalendar.get(Calendar.YEAR)
+                            solarMonth = selectedCalendar.get(Calendar.MONTH) + 1
+                            solarDay = selectedCalendar.get(Calendar.DAY_OF_MONTH)
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("取消")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
